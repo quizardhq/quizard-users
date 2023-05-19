@@ -29,7 +29,7 @@ type Config struct {
 	SendGridApiKey         string
 }
 
-var projectDirName = "quizard-backend"
+var projectDirName = "quizard-users"
 
 func init() {
 	projectName := regexp.MustCompile(`^(.*` + projectDirName + `)`)
