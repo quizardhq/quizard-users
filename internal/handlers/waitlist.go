@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"path/filepath"
-	"errors"
 
 	"github.com/quizardhq/constants"
 	"github.com/quizardhq/internal/helpers"
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	env = constants.New()
+	env        = constants.New()
 	ErrDbError = errors.New("something went wrong")
 )
 
