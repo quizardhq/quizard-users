@@ -31,6 +31,9 @@ func main() {
 	app := fiber.New(fiber.Config{
 		Prefork: *prod, // go run app.go -prod
 	})
+
+	app.Static("/", "./static/public")
+
 	// Middleware
 	app.Use(recover.New())
 	app.Use(logger.New())

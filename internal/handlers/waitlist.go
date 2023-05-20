@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"errors"
 
 	"github.com/quizardhq/constants"
 	"github.com/quizardhq/internal/helpers"
@@ -17,17 +18,14 @@ import (
 
 var (
 	env = constants.New()
+	ErrDbError = errors.New("something went wrong")
 )
 
 type WaitlistHandler struct {
 	waitlistRepository *repository.WaitlistRepository
 }
 
-type CutsomeError interface {
-	Error() string
-}
 type AppError struct {
-	CutsomeError
 	Message string
 }
 
@@ -67,7 +65,7 @@ func (u *WaitlistHandler) WaitlistCreate(c *fiber.Ctx) error {
 
 	_, userExist, err := u.waitlistRepository.FindRecordByCondition("email", input.Email)
 	if err != nil {
-		return helpers.Dispatch500Error(c, err)
+		return helpers.Dispatch500Error(c, ErrDbError)
 	}
 
 	if userExist {
@@ -113,7 +111,7 @@ func (u *WaitlistHandler) WaitlistCreate(c *fiber.Ctx) error {
 			return
 		}
 
-		client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", "Quizard", "Welcome to Quizard", messageBody.String())
+		client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", " Quizard", "Welcome to the Quizard Waitlist: Exciting Opportunities Await!", messageBody.String())
 		err = client.Send(&to)
 		if err != nil {
 			log.Println(err)

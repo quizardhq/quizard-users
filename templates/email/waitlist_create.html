@@ -12,27 +12,20 @@
         }
 
         body {
-            background-color: #ffffff;
-            color: #242D32;
+            background-color: #242D32;
+            color: #ffffff;
         }
 
-        @media (prefers-color-scheme: dark) {
+        @media (prefers-color-scheme: light) {
             body {
-                background-color: #242D32;
-                color: #ffffff;
+                background-color: #ffffff;
+                color: #242D32;
             }
         }
 
         .wrapper {
-            display: table;
-            height: 100%;
-            width: 100%;
-        }
-
-        .content {
-            display: table-cell;
-            vertical-align: middle;
-            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
             padding: 20px;
         }
 
@@ -43,69 +36,62 @@
             margin-bottom: 20px;
         }
 
-        .subtitle {
-            color: #B4FA64;
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-
         .text {
             font-size: 16px;
             line-height: 1.5;
             margin-bottom: 10px;
         }
 
-        .responsive-image {
+        .signature {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .postscript {
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        @media only screen and (max-width: 480px) {
+            .wrapper {
+                padding: 10px;
+            }
+
+            .header {
+                font-size: 20px;
+            }
+
+            .text {
+                font-size: 14px;
+            }
+
+            .signature,
+            .postscript {
+                font-size: 12px;
+            }
+        }
+          .responsive-image {
             display: block;
             max-width: 100%;
             height: auto;
             margin: 0 auto;
-        }
-
-        .button {
-            display: inline-block;
-            background-color: #00ED85;
-            color: #ffffff;
-            text-decoration: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 4px;
-            margin-top: 20px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .button {
-                background-color: #B4FA64;
-            }
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
     <div class="wrapper">
-        <div class="content">
-            <img src="https://quizardhq.com/assets/og_image.png" class="responsive-image" />
-            <p class="header">Hello, {{.Name}}!</p>
-            <p class="subtitle">Greetings, my esteemed seeker of knowledge!</p>
-            <p class="text">
-                I, a humble wizard, am pleased to announce that the time has come to embark on a new journey of discovery.
-                The Quizard team is excited to welcome you to our exclusive community of quiz enthusiasts!
-            </p>
-            <p class="text">
-                As a wise wizard once said, 'knowledge is power.' With Quizard, you will have the power to create, share,
-                and play personalized quizzes that inspire and delight. Our open-source platform has been crafted with
-                magic and care to ensure that your learning experience is seamless and enjoyable.
-            </p>
-            <p class="text">
-                You have shown great wisdom and foresight in joining our waitlist, and we are honored to have you as a
-                member of our community. We cannot wait to share the magic of Quizard with you!
-            </p>
-            <p class="text">
-                Stay tuned for further updates, and remember: the pursuit of knowledge is a journey, not a destination.
-            </p>
-            <p class="text">Sincerely,</p>
-            <p class="text">The Quizard Wizards</p>
-            <a href="https://github.com/quizardhq" class="button">Contribute on GitHub</a>
-        </div>
+         <img src="img/banner.png" class="responsive-image" />
+           
+        <p class="header">Dear Quizard Fan,</p>
+        <p class="text">Welcome to the Quizard waitlist! We're excited to have you join us on this magical journey. Quizard is an all-in-one open-source quiz platform that will always be free, no matter how many players there are.</p>
+        <p class="text">As a waitlist member, you'll have the honor of beta testing our product and exclusive opportunities to interact with our team. Your suggestions might even become new features in Quizard!</p>
+        <p class="text">We value your feedback and want to create a product that exceeds your expectations. Share your thoughts and desires with us as we shape our Minimum Viable Product (MVP).</p>
+        <p class="text">Thank you for being part of the Quizard community. We can't wait to share the wonders of Quizard with you!</p>
+        <p class="signature">With warmest regards,</p>
+        <p class="signature">Codemon<br>Founder, Quizard!</p>
+        <p class="postscript">P.S. Stay tuned for updates and exciting news about Quizard!</p>
     </div>
 </body>
 </html>
