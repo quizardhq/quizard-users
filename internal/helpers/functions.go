@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-playground/validator"
@@ -79,7 +80,7 @@ func GenerateToken(JWTSecretKey, email, name string) (signedToken string, err er
 }
 
 func ParseTemplateFile(filename string) (*template.Template, error) {
-	content, err := os.ReadFile(filename)
+	content, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		return nil, err
 	}
