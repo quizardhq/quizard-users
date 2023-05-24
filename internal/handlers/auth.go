@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	neturl "net/url"
+	"strings"
 
 	"github.com/quizardhq/constants"
 	"github.com/quizardhq/internal/helpers"
@@ -22,6 +24,13 @@ import (
 type AuthHandler struct {
 	userRepository *repository.UserRepository
 }
+type AccountStatus int
+
+const (
+	Active AccountStatus = iota
+	Suspended
+	Banned
+)
 
 func NewAuthHandler(
 	userRepo *repository.UserRepository,
@@ -76,9 +85,12 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 	}
 	// create record
 	user := &models.User{
-		Name:     input.Name,
-		Email:    input.Email,
-		Password: hash,
+		FirstName:     input.FirstName,
+		LastName:      input.LastName,
+		Email:         input.Email,
+		Password:      hash,
+		UserId:        helpers.GenerateUUID(),
+		AccountStatus: int(Suspended),
 	}
 
 	if err := a.userRepository.CreateUser(user); err != nil {
@@ -91,7 +103,6 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 		"data": map[string]string{
 			"id":    fmt.Sprint(user.ID),
 			"email": user.Email,
-			"name":  user.Name,
 		},
 	})
 }
@@ -100,6 +111,7 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 	c.Set("Access-Control-Allow-Origin", "*")
 
 	state := c.FormValue("state")
+
 	if state != c.Cookies("oauthstate") {
 		return helpers.Dispatch400Error(c, "invalid state value in request payload", nil)
 	}
@@ -129,21 +141,31 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 	if err != nil {
 		return helpers.Dispatch500Error(c, err)
 	}
+	fname := strings.Split(info.Name, " ")
+	timenow, _ := helpers.TimeNow("Africa/Lagos")
+
 	if !userExist {
+
 		// create account if email not exist
 		user = &models.User{
-			Name:      info.Name,
-			Email:     info.Email,
-			Password:  "",
-			AvatarURL: info.Picture,
+			FirstName:     fname[0],
+			LastName:      fname[1],
+			Email:         info.Email,
+			Password:      "",
+			AvatarURL:     info.Picture,
+			UserId:        helpers.GenerateUUID(),
+			AccountStatus: int(Active),
+			LastLogin:     timenow,
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
 			return helpers.Dispatch500Error(c, err)
 		}
 	} else {
 		// if the user exist, we should do an update just in case the user name or profile change on google
-		user.Name = info.Name
+		user.FirstName = fname[0]
+		user.LastName = fname[1]
 		user.AvatarURL = info.Picture
+		user.LastLogin = timenow
 		_, err = a.userRepository.UpdateUserByCondition("email", info.Email, user)
 		if err != nil {
 			return helpers.Dispatch500Error(c, err)
@@ -157,9 +179,9 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 
 	c.Status(http.StatusPermanentRedirect)
 	c.Set("token", jwtToken)
-	c.Set("user_id", fmt.Sprint(user.ID))
+	c.Set("user_id", fmt.Sprint(user.UserId))
 	c.Set("user_email", user.Email)
-	c.Set("user_name", user.Name)
+	c.Set("user_name", user.FirstName)
 
 	return c.Redirect(constant.ClientOauthRedirectURL)
 }
@@ -172,13 +194,22 @@ func (a *AuthHandler) GoogleOauth(c *fiber.Ctx) error {
 	}
 	state := base64.StdEncoding.EncodeToString(b)
 	url := googleoAuthConf.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	decodedURL, err := neturl.QueryUnescape(url)
+
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return c.JSON(fiber.Map{
+			"success": false,
+			"message": err.Error(),
+		})
+	}
 	c.Cookie(&fiber.Cookie{Name: "oauthstate", Value: state})
-	c.Status(http.StatusTemporaryRedirect)
+	c.Status(http.StatusAccepted)
 	return c.JSON(fiber.Map{
 		"success": true,
 		"message": "google oauth",
 		"data": map[string]string{
-			"url": url,
+			"url": decodedURL,
 		},
 	})
 }
@@ -209,20 +240,30 @@ func (a *AuthHandler) GithubOauthCallback(c *fiber.Ctx) error {
 	if err != nil {
 		return helpers.Dispatch500Error(c, err)
 	}
+	fname := strings.Split(info.GetName(), " ")
+	timenow, _ := helpers.TimeNow("Africa/Lagos")
+
 	if !userExist {
 		// create account if email not exist
 		user = &models.User{
-			Name:      info.GetName(),
-			Email:     info.GetEmail(),
-			Password:  "",
-			AvatarURL: info.GetAvatarURL(),
+			FirstName:     fname[0],
+			LastName:      fname[1],
+			Email:         info.GetEmail(),
+			Password:      "",
+			AvatarURL:     info.GetAvatarURL(),
+			UserId:        helpers.GenerateUUID(),
+			AccountStatus: int(Active),
+			LastLogin:     timenow,
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
 			return helpers.Dispatch500Error(c, err)
 		}
 	} else {
-		user.Name = info.GetName()
+		user.FirstName = fname[0]
+		user.LastName = fname[1]
 		user.AvatarURL = info.GetAvatarURL()
+		user.LastLogin = timenow
+
 		_, err = a.userRepository.UpdateUserByCondition("email", *info.Email, user)
 		if err != nil {
 			return helpers.Dispatch500Error(c, err)
@@ -236,9 +277,9 @@ func (a *AuthHandler) GithubOauthCallback(c *fiber.Ctx) error {
 
 	c.Status(http.StatusPermanentRedirect)
 	c.Set("token", jwtToken)
-	c.Set("user_id", fmt.Sprint(user.ID))
+	c.Set("user_id", fmt.Sprint(user.UserId))
 	c.Set("user_email", user.Email)
-	c.Set("user_name", user.Name)
+	c.Set("user_name", user.FirstName)
 
 	return c.Redirect(constant.ClientOauthRedirectURL)
 }

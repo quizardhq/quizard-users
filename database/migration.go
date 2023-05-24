@@ -33,8 +33,14 @@ func Migrate(db *gorm.DB) {
 		if !tableExist {
 			query := `CREATE TABLE users (
 			id SERIAL PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL,
 			email VARCHAR(255) NOT NULL,
 			password VARCHAR(255) NOT NULL,
+			first_name VARCHAR(255) NOT NULL,
+			last_name VARCHAR(255) NOT NULL,
+			last_login VARCHAR(255) DEFAULT NULL,
+			ip VARCHAR(255)DEFAULT NULL,
+			account_status INTEGER DEFAULT 1 NOT NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);`
@@ -48,7 +54,12 @@ func Migrate(db *gorm.DB) {
 			ALTER TABLE users
 			ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(255),
 			ADD COLUMN IF NOT EXISTS first_name VARCHAR(255) NOT NULL,
-    ADD COLUMN IF NOT EXISTS last_name VARCHAR(255) NOT NULL;
+    ADD COLUMN IF NOT EXISTS last_name VARCHAR(255) NOT NULL,
+    ADD COLUMN IF NOT EXISTS last_login VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS ip VARCHAR(255),
+		 ADD COLUMN IF NOT EXISTS	account_status INTEGER DEFAULT 1 NOT NULL,
+    ADD COLUMN IF NOT EXISTS user_id VARCHAR(255);
+
 		`).Error
 		if err != nil {
 			errorCh <- err

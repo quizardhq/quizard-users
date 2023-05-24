@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -84,4 +85,20 @@ func ParseTemplateFile(filename string) (*template.Template, error) {
 	}
 
 	return template.New("emailTemplate").Parse(string(content))
+}
+
+func GenerateUUID() string {
+	uuid := uuid.New()
+	return uuid.String()
+}
+
+func TimeNow(timezone string) (string, error) {
+
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		return "", err
+	}
+
+	currentTime := time.Now().In(location)
+	return currentTime.String(), nil
 }
