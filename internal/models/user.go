@@ -2,11 +2,16 @@ package models
 
 // User model
 type User struct {
-	ID        uint   `gorm:"primarykey"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	AvatarURL string `json:"avatar_url"`
+	ID            uint   `gorm:"primarykey"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
+	AvatarURL     string `json:"avatar_url"`
+	LastLogin     string `json:"last_login"`
+	IP            string `json:"ip"`
+	UserId        string `json:"user_id" validate:"required"`
+	AccountStatus int    `json:"account_status" validate:"required"`
 }
 
 type Waitlist struct {

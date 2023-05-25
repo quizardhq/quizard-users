@@ -3,7 +3,7 @@ image_name = quizard_users:latest
 postgre_image = postgres_quizard
 
 run-local:
-	go fmt ./... && air app.go
+	go fmt ./... && gosec ./... && air app.go
 
 requirements:
 	go mod tidy
