@@ -101,33 +101,44 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 
 	state := c.FormValue("state")
 	if state != c.Cookies("oauthstate") {
-		return helpers.Dispatch400Error(c, "invalid state value in request payload", nil)
+		c.Set("error", "invalid state value in request payload")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 	code := c.Query("code")
 	if code == "" {
-		return helpers.Dispatch400Error(c, "authorization code not provided", nil)
-
+		c.Set("error", "authorization code not provided")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 
 	token, err := googleoAuthConf.Exchange(c.Context(), code)
 	if err != nil {
-		return helpers.Dispatch500Error(c, fmt.Errorf(`unable to authenticate; err: %v`, err))
+		c.Set("error", "error exhanging code for token: "+err.Error())
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 
 	client := googleoAuthConf.Client(c.Context(), token)
 	srv, err := googleOauth.NewService(c.Context(), option.WithHTTPClient(client))
 	if err != nil {
-		return helpers.Dispatch500Error(c, err)
+		c.Set("error", "failed to create google auth client")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 
 	info, err := srv.Userinfo.Get().Do()
 	if err != nil {
-		return helpers.Dispatch500Error(c, err)
+		c.Set("error", "failed to get user info")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 
 	user, userExist, err := a.userRepository.FindUserByCondition("email", info.Email)
 	if err != nil {
-		return helpers.Dispatch500Error(c, err)
+		c.Set("error", "failed to get user info")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 	if !userExist {
 		// create account if email not exist
@@ -138,7 +149,9 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 			AvatarURL: info.Picture,
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
-			return helpers.Dispatch500Error(c, err)
+			c.Set("error", "failed to create user record")
+			c.Status(http.StatusPermanentRedirect)
+			return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 		}
 	} else {
 		// if the user exist, we should do an update just in case the user name or profile change on google
@@ -146,13 +159,17 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 		user.AvatarURL = info.Picture
 		_, err = a.userRepository.UpdateUserByCondition("email", info.Email, user)
 		if err != nil {
-			return helpers.Dispatch500Error(c, err)
+			c.Set("error", "failed to update user record")
+			c.Status(http.StatusPermanentRedirect)
+			return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 		}
 	}
 
 	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, info.Email, info.Name)
 	if err != nil {
-		return helpers.Dispatch500Error(c, err)
+		c.Set("error", "failed to generate auth tokn")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 
 	c.Status(http.StatusPermanentRedirect)
@@ -188,26 +205,35 @@ func (a *AuthHandler) GithubOauthCallback(c *fiber.Ctx) error {
 
 	state := c.FormValue("state")
 	if state != c.Cookies("oauthstate") {
-		return helpers.Dispatch400Error(c, "invalid state value in request payload", nil)
+		c.Set("error", "invalid state value in request payload")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 	code := c.Query("code")
 	if code == "" {
-		return helpers.Dispatch400Error(c, "authorization code not provided", nil)
-
+		c.Set("error", "authorization code not provided")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 	token, err := githubOAuthConfig.Exchange(c.Context(), code)
 	if err != nil {
-		return helpers.Dispatch500Error(c, fmt.Errorf(`unable to authenticate; err: %v`, err))
+		c.Set("error", "error exhanging code for token: "+err.Error())
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 	client := github.NewClient(githubOAuthConfig.Client(c.Context(), token))
 	info, _, err := client.Users.Get(c.Context(), "")
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).SendString(fmt.Sprintf("Failed to get user info: %v", err))
+		c.Set("error", "failed to get user info")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 
 	user, userExist, err := a.userRepository.FindUserByCondition("email", *info.Email)
 	if err != nil {
-		return helpers.Dispatch500Error(c, err)
+		c.Set("error", "failed to get user info")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 	if !userExist {
 		// create account if email not exist
@@ -218,20 +244,26 @@ func (a *AuthHandler) GithubOauthCallback(c *fiber.Ctx) error {
 			AvatarURL: info.GetAvatarURL(),
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
-			return helpers.Dispatch500Error(c, err)
+			c.Set("error", "failed to create user record")
+			c.Status(http.StatusPermanentRedirect)
+			return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 		}
 	} else {
 		user.Name = info.GetName()
 		user.AvatarURL = info.GetAvatarURL()
 		_, err = a.userRepository.UpdateUserByCondition("email", *info.Email, user)
 		if err != nil {
-			return helpers.Dispatch500Error(c, err)
+			c.Set("error", "failed to update user record")
+			c.Status(http.StatusPermanentRedirect)
+			return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 		}
 	}
 
 	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, info.GetEmail(), info.GetName())
 	if err != nil {
-		return helpers.Dispatch500Error(c, err)
+		c.Set("error", "failed to generate auth tokn")
+		c.Status(http.StatusPermanentRedirect)
+		return c.Redirect(fmt.Sprintf(`%s?error=authentication_failed`, constant.ClientOauthRedirectURL))
 	}
 
 	c.Status(http.StatusPermanentRedirect)
