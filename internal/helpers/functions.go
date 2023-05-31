@@ -62,6 +62,10 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+func CompareHash(hash, plain string) {
+
+}
+
 // GenerateToken generates a jwt token
 func GenerateToken(JWTSecretKey, email, name string) (signedToken string, err error) {
 	claims := &AuthTokenJwtClaim{

@@ -22,3 +22,17 @@ func ValidateRegisterUserSchema(c *fiber.Ctx) error {
 	}
 	return c.Next()
 }
+
+func ValidateLoginUser(c *fiber.Ctx) error {
+	body := new(helpers.AuthenticateUser)
+
+	err := c.BodyParser(&body)
+	if err != nil {
+		return helpers.Dispatch400Error(c, "invalid payload", nil)
+	}
+	err = Validator.Struct(body)
+	if err != nil {
+		return helpers.SchemaError(c, err)
+	}
+	return c.Next()
+}

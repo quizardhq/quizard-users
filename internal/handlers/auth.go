@@ -15,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/go-github/v39/github"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 	gitOauth "golang.org/x/oauth2/github"
 	googleOauth "google.golang.org/api/oauth2/v2"
@@ -29,6 +30,7 @@ type AccountStatus int
 const (
 	Active AccountStatus = iota
 	Suspended
+	InActive
 	Banned
 )
 
@@ -63,6 +65,69 @@ var (
 	}
 )
 
+func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
+	var input helpers.AuthenticateUser
+	if err := c.BodyParser(&input); err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	user, userExist, err := a.userRepository.FindUserByCondition("email", input.Email)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+	if !userExist {
+		return helpers.Dispatch400Error(c, "invalid account credentials", nil)
+	}
+
+	hashedPassword := []byte(user.Password)
+	plainPassword := []byte(input.Password)
+	err = bcrypt.CompareHashAndPassword(hashedPassword, plainPassword)
+
+	if err != nil {
+		return helpers.Dispatch400Error(c, "email and password does not match", nil)
+	}
+	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, user.Email, user.FirstName+" "+user.LastName)
+
+	if err != nil {
+		return helpers.Dispatch400Error(c, "something went wrong", err)
+	}
+
+	// check if account is active
+	if user.AccountStatus == int(Suspended) {
+		return helpers.Dispatch400Error(c, "account suspended", err)
+	}
+
+	if user.AccountStatus == int(Banned) {
+		return helpers.Dispatch400Error(c, "account banned", err)
+	}
+	
+		if user.AccountStatus == int(InActive) {
+		return helpers.Dispatch400Error(c, "account not activated", err)
+	}
+	
+	// update last login and ip
+	time, err := helpers.TimeNow("Africa/Lagos")
+	user.LastLogin = time
+	user.IP = c.IP()
+
+	if err != nil {
+		return helpers.Dispatch400Error(c, "something went wrong", err)
+	}
+	_, err = a.userRepository.UpdateUserByCondition("email", user.Email, user)
+	if err != nil {
+		return helpers.Dispatch400Error(c, "something went wrong", err)
+	}
+	c.Status(http.StatusOK)
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "authenticated successfully",
+		"data": map[string]string{
+			"jwt": jwtToken,
+		},
+	})
+
+}
+
 // registers a user
 func (a *AuthHandler) Register(c *fiber.Ctx) error {
 	c.Set("Access-Control-Allow-Origin", "*")
@@ -90,7 +155,8 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 		Email:         input.Email,
 		Password:      hash,
 		UserId:        helpers.GenerateUUID(),
-		AccountStatus: int(Suspended),
+		AccountStatus: int(InActive),
+		IP: c.IP(),
 	}
 
 	if err := a.userRepository.CreateUser(user); err != nil {
@@ -179,6 +245,7 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 		user.LastName = fname[1]
 		user.AvatarURL = info.Picture
 		user.LastLogin = timenow
+
 		_, err = a.userRepository.UpdateUserByCondition("email", info.Email, user)
 		if err != nil {
 			c.Set("error", "failed to update user record")

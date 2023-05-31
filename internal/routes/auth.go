@@ -15,6 +15,7 @@ func registerAuth(router fiber.Router, db *gorm.DB) {
 	handler := handlers.NewAuthHandler(userRepo)
 
 	authRouter.Post("/register", validators.ValidateRegisterUserSchema, handler.Register)
+	authRouter.Post("/", validators.ValidateLoginUser, handler.Authenticate)
 	authRouter.Get("/google/callback", handler.GoogleOauthCallback)
 	authRouter.Get("/google", handler.GoogleOauth)
 	authRouter.Get("/github/callback", handler.GithubOauthCallback)
