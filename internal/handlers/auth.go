@@ -25,10 +25,9 @@ import (
 type AuthHandler struct {
 	userRepository *repository.UserRepository
 }
-type AccountStatus int
 
 const (
-	Active AccountStatus = iota
+	Active models.AccountStatus = iota
 	Suspended
 	InActive
 	Banned
@@ -93,15 +92,15 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 	}
 
 	// check if account is active
-	if user.AccountStatus == int(Suspended) {
+	if user.AccountStatus == (Suspended) {
 		return helpers.Dispatch400Error(c, "account suspended", err)
 	}
 
-	if user.AccountStatus == int(Banned) {
+	if user.AccountStatus == (Banned) {
 		return helpers.Dispatch400Error(c, "account banned", err)
 	}
 	
-		if user.AccountStatus == int(InActive) {
+		if user.AccountStatus == (InActive) {
 		return helpers.Dispatch400Error(c, "account not activated", err)
 	}
 	
@@ -155,7 +154,7 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 		Email:         input.Email,
 		Password:      hash,
 		UserId:        helpers.GenerateUUID(),
-		AccountStatus: int(InActive),
+		AccountStatus: InActive,
 		IP: c.IP(),
 	}
 
@@ -231,7 +230,7 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 			Password:      "",
 			AvatarURL:     info.Picture,
 			UserId:        helpers.GenerateUUID(),
-			AccountStatus: int(Active),
+			AccountStatus: (Active),
 			LastLogin:     timenow,
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
@@ -345,7 +344,7 @@ func (a *AuthHandler) GithubOauthCallback(c *fiber.Ctx) error {
 			Password:      "",
 			AvatarURL:     info.GetAvatarURL(),
 			UserId:        helpers.GenerateUUID(),
-			AccountStatus: int(Active),
+			AccountStatus: (Active),
 			LastLogin:     timenow,
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
