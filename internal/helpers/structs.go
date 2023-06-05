@@ -5,8 +5,13 @@ import "github.com/golang-jwt/jwt"
 type InputCreateUser struct {
 	FirstName string `json:"first_name" validate:"required"`
 	LastName  string `json:"last_name" validate:"required"`
-	Email     string `json:"email" validate:"required"`
+	Email     string `json:"email" validate:"required,email"`
 	Password  string `json:"password" validate:"required"`
+}
+
+type AuthenticateUser struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type IError struct {
@@ -20,3 +25,4 @@ type AuthTokenJwtClaim struct {
 	Name  string
 	jwt.StandardClaims
 }
+

@@ -1,6 +1,7 @@
 package models
 
-// User model
+type AccountStatus int
+
 type User struct {
 	ID            uint   `gorm:"primarykey"`
 	FirstName     string `json:"first_name"`
@@ -11,7 +12,7 @@ type User struct {
 	LastLogin     string `json:"last_login"`
 	IP            string `json:"ip"`
 	UserId        string `json:"user_id" validate:"required"`
-	AccountStatus int    `json:"account_status" validate:"required"`
+	AccountStatus AccountStatus    `json:"account_status" validate:"required"`
 }
 
 type Waitlist struct {
