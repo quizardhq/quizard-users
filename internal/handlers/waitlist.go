@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log"
-	"path/filepath"
 
 	"github.com/quizardhq/constants"
 	"github.com/quizardhq/internal/helpers"
@@ -88,30 +86,13 @@ func (u *WaitlistHandler) WaitlistCreate(c *fiber.Ctx) error {
 			Email: To.Email,
 		}
 
-		absolutePath, err := filepath.Abs("templates/email/waitlist_create.html")
+		messageBody, err := helpers.ParseTemplateFile("waitlist_create.html", to)
 		if err != nil {
 			log.Println(err)
 			return
 		}
 
-		template, err := helpers.ParseTemplateFile(absolutePath)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		if template == nil {
-			return
-		}
-
-		messageBody := new(bytes.Buffer)
-		err = template.Execute(messageBody, to)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", " Quizard", "Welcome to the Quizard Waitlist: Exciting Opportunities Await!", messageBody.String())
+		client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", " Quizard", "Welcome to the Quizard Waitlist: Exciting Opportunities Await!", messageBody)
 		err = client.Send(&to)
 		if err != nil {
 			log.Println(err)
