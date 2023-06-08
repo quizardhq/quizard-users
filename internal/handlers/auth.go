@@ -4,14 +4,18 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net/http"
 	neturl "net/url"
 	"strings"
+	"time"
 
 	"github.com/quizardhq/constants"
 	"github.com/quizardhq/internal/helpers"
 	"github.com/quizardhq/internal/models"
+	"github.com/quizardhq/internal/otp"
 	"github.com/quizardhq/internal/repository"
+	"github.com/quizardhq/sendgrid"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/go-github/v39/github"
@@ -99,11 +103,11 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 	if user.AccountStatus == (Banned) {
 		return helpers.Dispatch400Error(c, "account banned", err)
 	}
-	
-		if user.AccountStatus == (InActive) {
+
+	if user.AccountStatus == (InActive) {
 		return helpers.Dispatch400Error(c, "account not activated", err)
 	}
-	
+
 	// update last login and ip
 	time, err := helpers.TimeNow("Africa/Lagos")
 	user.LastLogin = time
@@ -155,12 +159,44 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 		Password:      hash,
 		UserId:        helpers.GenerateUUID(),
 		AccountStatus: InActive,
-		IP: c.IP(),
+		IP:            c.IP(),
+	}
+
+	otpToken, err := otp.OTPManage.GenerateOTP(input.Email, 5*time.Minute)
+
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
 	}
 
 	if err := a.userRepository.CreateUser(user); err != nil {
 		return helpers.Dispatch500Error(c, err)
 	}
+
+	go func(To *models.User, otp string) {
+		to := sendgrid.EmailAddress{
+			Name:  fmt.Sprintf("%s %s", To.FirstName, To.LastName),
+			Email: To.Email,
+		}
+
+		type OTP struct {
+			Otp string
+		}
+
+		messageBody, err := helpers.ParseTemplateFile("otp.html", OTP{Otp: otp})
+		if err != nil {
+			log.Println(err)
+
+			return
+		}
+
+		client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", "Quizard", "🎉 Welcome to Quizard! Complete Your Registration with the OTP Code", messageBody)
+		err = client.Send(&to)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}(user, otpToken)
+
 	c.Status(http.StatusCreated)
 	return c.JSON(fiber.Map{
 		"success": true,

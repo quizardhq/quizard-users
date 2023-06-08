@@ -4,6 +4,7 @@ import (
 	"github.com/quizardhq/constants"
 	"github.com/quizardhq/database"
 	"github.com/quizardhq/internal/handlers"
+	"github.com/quizardhq/internal/otp"
 	"github.com/quizardhq/internal/routes"
 
 	"flag"
@@ -23,6 +24,7 @@ var (
 
 func main() {
 	constant := constants.New()
+	_ = otp.NewOTPManager()
 
 	// Parse command-line flags
 	flag.Parse()

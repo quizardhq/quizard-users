@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -91,9 +92,16 @@ func (c *Client) Send(person *EmailAddress) error {
 	if err != nil {
 		return err
 	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Convert the response body to a string for logging
+	respBodyStr := string(respBody)
 
 	if resp.StatusCode >= 203 {
-		return fmt.Errorf("sendgrid: error sending email, status code: %d, message: ", resp.StatusCode)
+		return fmt.Errorf("sendgrid: error sending email, status code: %d, message: %s ", resp.StatusCode, respBodyStr)
 	}
 
 	return nil

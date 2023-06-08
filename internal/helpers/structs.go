@@ -25,4 +25,3 @@ type AuthTokenJwtClaim struct {
 	Name  string
 	jwt.StandardClaims
 }
-
