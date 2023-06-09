@@ -20,4 +20,5 @@ func registerAuth(router fiber.Router, db *gorm.DB) {
 	authRouter.Get("/google", handler.GoogleOauth)
 	authRouter.Get("/github/callback", handler.GithubOauthCallback)
 	authRouter.Get("/github", handler.GithubOauth)
+	authRouter.Post("/otp/verify", validators.ValidateOTPVerifySchema, handler.OtpVerify)
 }
