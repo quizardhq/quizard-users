@@ -43,6 +43,24 @@ func init() {
 		return t
 	})
 }
+func ValidateAccountResetScheme(c *fiber.Ctx) error {
+	body := new(helpers.AccountReset)
+	err := c.BodyParser(&body)
+	if err != nil {
+		return helpers.Dispatch400Error(c, "invalid payload", nil)
+	}
+
+	err = Validator.Struct(body)
+	if err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		var validationMessages []string
+		for _, e := range validationErrors {
+			validationMessages = append(validationMessages, e.Translate(Trans))
+		}
+		return helpers.Dispatch400Error(c, "validation failed", validationMessages)
+	}
+	return c.Next()
+}
 
 func ValidateOTPVerifySchema(c *fiber.Ctx) error {
 	body := new(helpers.OtpVerify)
