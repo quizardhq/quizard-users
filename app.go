@@ -34,7 +34,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync()
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			// Handle the error appropriately, such as logging or returning an error
+			log.Println("Failed to sync logger:", err)
+		}
+	}()
 
 	constant := constants.New()
 	_ = otp.NewOTPManager()
@@ -77,7 +83,7 @@ func main() {
 		zap.Int("status", c.Response().StatusCode()),
 		zap.Any("headers", c.Response()),
 	)
-	
+
 
 	return err
 	})
