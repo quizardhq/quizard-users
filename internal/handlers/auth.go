@@ -4,14 +4,19 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net/http"
 	neturl "net/url"
 	"strings"
+	"time"
+	"unicode"
 
 	"github.com/quizardhq/constants"
 	"github.com/quizardhq/internal/helpers"
 	"github.com/quizardhq/internal/models"
+	"github.com/quizardhq/internal/otp"
 	"github.com/quizardhq/internal/repository"
+	"github.com/quizardhq/sendgrid"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/go-github/v39/github"
@@ -57,6 +62,158 @@ var (
 	}
 )
 
+func (a *AuthHandler) AccountResetOtpVerify(c *fiber.Ctx) error {
+	var input helpers.OtpVerify
+	if err := c.BodyParser(&input); err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	user, err := a.findUserOrError(input.Email)
+
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+	input.Token = strings.Map(unicode.ToUpper, input.Token)
+	valid := otp.OTPManage.VerifyOTP(input.Email, input.Token)
+
+	if !valid {
+		return helpers.Dispatch500Error(c, NewError("invalid/expired token"))
+	}
+	c.Status(http.StatusOK)
+	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, user.Email, user.FirstName+" "+user.LastName)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "otp confirmed successfully",
+		"data": map[string]string{
+			"jwt": jwtToken,
+		},
+	})
+
+}
+
+func (a *AuthHandler) AccountReset(c *fiber.Ctx) error {
+	var input helpers.AccountReset
+	if err := c.BodyParser(&input); err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+	user, userExist, err := a.userRepository.FindUserByCondition("email", input.Email)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	otpToken, err := otp.OTPManage.GenerateOTP(input.Email, 5*time.Minute)
+
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	if userExist {
+		go sendPasswordResetEmail(user, otpToken)
+	}
+	return c.JSON(fiber.Map{
+		"success": userExist,
+		"message": "account reset",
+		"data":    nil,
+	})
+}
+
+func sendPasswordResetEmail(user *models.User, otpToken string) {
+	to := sendgrid.EmailAddress{
+		Name:  fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+		Email: user.Email,
+	}
+
+	type OTP struct {
+		Otp  string
+		Name string
+	}
+
+	messageBody, err := helpers.ParseTemplateFile("account_reset.html", OTP{Otp: otpToken, Name: fmt.Sprintf("%s %s", user.FirstName, user.LastName)})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", "Quizard", "Complete your password reset request", messageBody)
+	err = client.Send(&to)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+/*
+Verify Email Address using OTP
+*/
+func (a *AuthHandler) OtpVerify(c *fiber.Ctx) error {
+	var input helpers.OtpVerify
+	if err := c.BodyParser(&input); err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	user, userExist, err := a.userRepository.FindUserByCondition("email", input.Email)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	if !userExist {
+		return helpers.Dispatch400Error(c, "invalid account", nil)
+	}
+
+	input.Token = strings.Map(unicode.ToUpper, input.Token)
+	valid := otp.OTPManage.VerifyOTP(input.Email, input.Token)
+
+	if !valid {
+		return helpers.Dispatch500Error(c, NewError("invalid/expired token"))
+	}
+
+	user.AccountStatus = Active
+	user.IP = c.IP()
+
+	user, err = a.userRepository.UpdateUserByCondition("email", input.Email, user)
+	if err != nil {
+		return helpers.Dispatch400Error(c, "something went wrong", err)
+	}
+
+	c.Status(http.StatusOK)
+	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, user.Email, user.FirstName+" "+user.LastName)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	go func(To *models.User) {
+		to := sendgrid.EmailAddress{
+			Name:  fmt.Sprintf("%s %s", To.FirstName, To.LastName),
+			Email: To.Email,
+		}
+
+		messageBody, err := helpers.ParseTemplateFile("welcome.html", to)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", "Quizard", "🎉 Welcome to Quizard: Unleash the Magic of Knowledge and Fun!", messageBody)
+		err = client.Send(&to)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}(user)
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "authenticated successfully",
+		"data": map[string]string{
+			"jwt": jwtToken,
+		},
+	})
+}
+
 func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 	var input helpers.AuthenticateUser
 	if err := c.BodyParser(&input); err != nil {
@@ -78,7 +235,6 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 	if err != nil {
 		return helpers.Dispatch400Error(c, "email and password does not match", nil)
 	}
-	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, user.Email, user.FirstName+" "+user.LastName)
 
 	if err != nil {
 		return helpers.Dispatch400Error(c, "something went wrong", err)
@@ -96,7 +252,7 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 		if user.AccountStatus == (constants.InActive) {
 		return helpers.Dispatch400Error(c, "account not activated", err)
 	}
-	
+
 	// update last login and ip
 	time, err := helpers.TimeNow("Africa/Lagos")
 	user.LastLogin = time
@@ -109,6 +265,10 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 	if err != nil {
 		return helpers.Dispatch400Error(c, "something went wrong", err)
 	}
+	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, user.Email, user.FirstName+" "+user.LastName)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
 	c.Status(http.StatusOK)
 	return c.JSON(fiber.Map{
 		"success": true,
@@ -120,6 +280,17 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 
 }
 
+func (a *AuthHandler) findUserOrError(email string) (user *models.User, err error) {
+	user, userExist, err := a.userRepository.FindUserByCondition("email", email)
+	if err != nil {
+		return nil, err
+	}
+	if !userExist {
+		return nil, NewError("user not found")
+	}
+	return user, nil
+}
+
 // registers a user
 func (a *AuthHandler) Register(c *fiber.Ctx) error {
 	c.Set("Access-Control-Allow-Origin", "*")
@@ -127,13 +298,11 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 	if err := c.BodyParser(&input); err != nil {
 		return helpers.Dispatch500Error(c, err)
 	}
-	// validate email does not exist
-	_, userExist, err := a.userRepository.FindUserByCondition("email", input.Email)
-	if err != nil {
-		return helpers.Dispatch500Error(c, err)
-	}
-	if userExist {
-		return helpers.Dispatch400Error(c, "email already exist", nil)
+
+	userFound, err := a.findUserOrError(input.Email)
+
+	if userFound != nil && err == nil {
+		return helpers.Dispatch500Error(c, NewError("user already registered"))
 	}
 
 	hash, err := helpers.HashPassword(input.Password)
@@ -154,6 +323,32 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 	if err := a.userRepository.CreateUser(user); err != nil {
 		return helpers.Dispatch500Error(c, err)
 	}
+
+	go func(To *models.User, otp string) {
+		to := sendgrid.EmailAddress{
+			Name:  fmt.Sprintf("%s %s", To.FirstName, To.LastName),
+			Email: To.Email,
+		}
+
+		type OTP struct {
+			Otp string
+		}
+
+		messageBody, err := helpers.ParseTemplateFile("otp.html", OTP{Otp: otp})
+		if err != nil {
+			log.Println(err)
+
+			return
+		}
+
+		client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", "Quizard Support", "Complete Your Registration with the OTP Code", messageBody)
+		err = client.Send(&to)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}(user, otpToken)
+
 	c.Status(http.StatusCreated)
 	return c.JSON(fiber.Map{
 		"success": true,

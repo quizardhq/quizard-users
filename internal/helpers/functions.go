@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -79,13 +80,28 @@ func GenerateToken(JWTSecretKey, email, name string) (signedToken string, err er
 	return
 }
 
-func ParseTemplateFile(filename string) (*template.Template, error) {
-	content, err := os.ReadFile(filepath.Clean(filename))
+func ParseTemplateFile(filename string, mapping interface{}) (string, error) {
+	absolutePath, err := filepath.Abs("templates/email/" + filename)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return template.New("emailTemplate").Parse(string(content))
+	content, err := os.ReadFile(filepath.Clean(absolutePath))
+	if err != nil {
+		return "", err
+	}
+
+	temp, err := template.New("emailTemplate").Parse(string(content))
+	if err != nil {
+		return "", err
+	}
+	messageBody := new(bytes.Buffer)
+	err = temp.Execute(messageBody, mapping)
+	if err != nil {
+		return "", err
+	}
+
+	return messageBody.String(), nil
 }
 
 func GenerateUUID() string {
