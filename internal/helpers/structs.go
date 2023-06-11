@@ -26,3 +26,4 @@ type AuthTokenJwtClaim struct {
 	jwt.StandardClaims
 }
 
+type AccountStatus int

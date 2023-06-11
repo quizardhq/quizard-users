@@ -1,6 +1,6 @@
 package models
 
-type AccountStatus int
+import "github.com/quizardhq/internal/helpers"
 
 type User struct {
 	ID            uint   `gorm:"primarykey"`
@@ -12,7 +12,7 @@ type User struct {
 	LastLogin     string `json:"last_login"`
 	IP            string `json:"ip"`
 	UserId        string `json:"user_id" validate:"required"`
-	AccountStatus AccountStatus    `json:"account_status" validate:"required"`
+	AccountStatus helpers.AccountStatus    `json:"account_status" validate:"required"`
 }
 
 type Waitlist struct {
