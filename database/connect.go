@@ -41,7 +41,7 @@ func Connect(config *Config) {
 		panic("failed to connect database")
 	}
 
-	RunAutoMigrations()
+	// RunAutoMigrations()
 
 	fmt.Println("Connection Opened to Database")
 }

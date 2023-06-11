@@ -171,7 +171,7 @@ func (a *AuthHandler) OtpVerify(c *fiber.Ctx) error {
 		return helpers.Dispatch500Error(c, NewError("invalid/expired token"))
 	}
 
-	user.AccountStatus = Active
+	user.AccountStatus = constants.Active
 	user.IP = c.IP()
 
 	user, err = a.userRepository.UpdateUserByCondition("email", input.Email, user)
@@ -318,6 +318,12 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 		UserId:        helpers.GenerateUUID(),
 		AccountStatus: constants.InActive,
 		IP: c.IP(),
+	}
+
+	otpToken, err := otp.OTPManage.GenerateOTP(input.Email, 5*time.Minute)
+
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
 	}
 
 	if err := a.userRepository.CreateUser(user); err != nil {
