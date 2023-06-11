@@ -69,6 +69,90 @@ var (
 	}
 )
 
+func (a *AuthHandler) AccountResetOtpVerify(c *fiber.Ctx) error {
+	var input helpers.OtpVerify
+	if err := c.BodyParser(&input); err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	user, err := a.findUserOrError(input.Email)
+
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+	input.Token = strings.Map(unicode.ToUpper, input.Token)
+	valid := otp.OTPManage.VerifyOTP(input.Email, input.Token)
+
+	if !valid {
+		return helpers.Dispatch500Error(c, NewError("invalid/expired token"))
+	}
+	c.Status(http.StatusOK)
+	jwtToken, err := helpers.GenerateToken(constant.JWTSecretKey, user.Email, user.FirstName+" "+user.LastName)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "otp confirmed successfully",
+		"data": map[string]string{
+			"jwt": jwtToken,
+		},
+	})
+
+}
+
+func (a *AuthHandler) AccountReset(c *fiber.Ctx) error {
+	var input helpers.AccountReset
+	if err := c.BodyParser(&input); err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+	user, userExist, err := a.userRepository.FindUserByCondition("email", input.Email)
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	otpToken, err := otp.OTPManage.GenerateOTP(input.Email, 5*time.Minute)
+
+	if err != nil {
+		return helpers.Dispatch500Error(c, err)
+	}
+
+	if userExist {
+		go sendPasswordResetEmail(user, otpToken)
+	}
+	return c.JSON(fiber.Map{
+		"success": userExist,
+		"message": "account reset",
+		"data":    nil,
+	})
+}
+
+func sendPasswordResetEmail(user *models.User, otpToken string) {
+	to := sendgrid.EmailAddress{
+		Name:  fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+		Email: user.Email,
+	}
+
+	type OTP struct {
+		Otp  string
+		Name string
+	}
+
+	messageBody, err := helpers.ParseTemplateFile("account_reset.html", OTP{Otp: otpToken, Name: fmt.Sprintf("%s %s", user.FirstName, user.LastName)})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	client := sendgrid.NewClient(env.SendGridApiKey, "hello@quizardhq.com", "Quizard", "Complete your password reset request", messageBody)
+	err = client.Send(&to)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
 /*
 Verify Email Address using OTP
 */

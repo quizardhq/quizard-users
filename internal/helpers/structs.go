@@ -14,6 +14,9 @@ type OtpVerify struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
+type AccountReset struct {
+	Email string `json:"email" validate:"required,email"`
+}
 type AuthenticateUser struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`

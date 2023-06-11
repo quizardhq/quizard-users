@@ -1,3 +1,4 @@
 .bin/*
 .env.prod
 .env
+tmp/log.txt
