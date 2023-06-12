@@ -102,7 +102,7 @@ func main() {
 
 	database.Connect(&dbConfig)
 
-	database.Migrate(database.DB)
+	database.RunManualMigration(database.DB)
 
 	// Bind routes
 	routes.Routes(app, database.DB)

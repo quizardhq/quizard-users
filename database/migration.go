@@ -2,17 +2,19 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/quizardhq/internal/models"
 	"gorm.io/gorm"
 )
 
 const dbTimeout = time.Second * 3
 
 // this is a custom migration function i use for sql dbs
-func Migrate(db *gorm.DB) {
+func RunManualMigration(db *gorm.DB) {
 	const TOTAL_WORKERS = 2
 	var (
 		wg      sync.WaitGroup
@@ -128,4 +130,17 @@ func checkTableExist(ctx context.Context, db *gorm.DB, tableName string) (bool, 
 	var response bool
 	_ = row.Scan(&response)
 	return response, nil
+}
+
+
+// this should handle gorm auto migration
+func RunAutoMigrations() {
+	if err := DB.AutoMigrate(&models.User{}); err != nil {
+		panic(fmt.Errorf("failed to migrate: %s", err))
+	}
+	if err := DB.AutoMigrate(&models.Waitlist{}); err != nil {
+		panic(fmt.Errorf("failed to migrate: %s", err))
+	}
+
+	fmt.Println("Migrations completed")
 }

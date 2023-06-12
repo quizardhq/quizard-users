@@ -31,13 +31,6 @@ type AuthHandler struct {
 	userRepository *repository.UserRepository
 }
 
-const (
-	InActive models.AccountStatus = iota
-	Suspended
-	Active
-	Banned
-)
-
 func NewAuthHandler(
 	userRepo *repository.UserRepository,
 ) *AuthHandler {
@@ -178,7 +171,7 @@ func (a *AuthHandler) OtpVerify(c *fiber.Ctx) error {
 		return helpers.Dispatch500Error(c, NewError("invalid/expired token"))
 	}
 
-	user.AccountStatus = Active
+	user.AccountStatus = constants.Active
 	user.IP = c.IP()
 
 	user, err = a.userRepository.UpdateUserByCondition("email", input.Email, user)
@@ -248,15 +241,15 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 	}
 
 	// check if account is active
-	if user.AccountStatus == (Suspended) {
+	if user.AccountStatus == (constants.Suspended) {
 		return helpers.Dispatch400Error(c, "account suspended", err)
 	}
 
-	if user.AccountStatus == (Banned) {
+	if user.AccountStatus == (constants.Banned) {
 		return helpers.Dispatch400Error(c, "account banned", err)
 	}
-
-	if user.AccountStatus == (InActive) {
+	
+		if user.AccountStatus == (constants.InActive) {
 		return helpers.Dispatch400Error(c, "account not activated", err)
 	}
 
@@ -323,8 +316,8 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 		Email:         input.Email,
 		Password:      hash,
 		UserId:        helpers.GenerateUUID(),
-		AccountStatus: InActive,
-		IP:            c.IP(),
+		AccountStatus: constants.InActive,
+		IP: c.IP(),
 	}
 
 	otpToken, err := otp.OTPManage.GenerateOTP(input.Email, 5*time.Minute)
@@ -431,7 +424,7 @@ func (a *AuthHandler) GoogleOauthCallback(c *fiber.Ctx) error {
 			Password:      "",
 			AvatarURL:     info.Picture,
 			UserId:        helpers.GenerateUUID(),
-			AccountStatus: (Active),
+			AccountStatus: (constants.Active),
 			LastLogin:     timenow,
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
@@ -545,7 +538,7 @@ func (a *AuthHandler) GithubOauthCallback(c *fiber.Ctx) error {
 			Password:      "",
 			AvatarURL:     info.GetAvatarURL(),
 			UserId:        helpers.GenerateUUID(),
-			AccountStatus: (Active),
+			AccountStatus: (constants.Active),
 			LastLogin:     timenow,
 		}
 		if err := a.userRepository.CreateUser(user); err != nil {
