@@ -64,28 +64,27 @@ func main() {
 	})
 
 	app.Use(func(c *fiber.Ctx) error {
-	
+
 		logger := c.Locals("logger").(*zap.Logger)
 
-	// Log request details
-	logger.Info("Request received",
-		zap.String("method", c.Method()),
-		zap.String("path", c.Path()),
-		zap.String("ip", c.IP()),
-		zap.Any("headers", c.Request()),
-	)
+		// Log request details
+		logger.Info("Request received",
+			zap.String("method", c.Method()),
+			zap.String("path", c.Path()),
+			zap.String("ip", c.IP()),
+			zap.Any("headers", c.Request()),
+		)
 
-	// Proceed to the next middleware or route handler
-	err := c.Next()
+		// Proceed to the next middleware or route handler
+		err := c.Next()
 
-	// Log response details
-	logger.Info("Response sent",
-		zap.Int("status", c.Response().StatusCode()),
-		zap.Any("headers", c.Response()),
-	)
+		// Log response details
+		logger.Info("Response sent",
+			zap.Int("status", c.Response().StatusCode()),
+			zap.Any("headers", c.Response()),
+		)
 
-
-	return err
+		return err
 	})
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "http://localhost:3000,https://quizardhq.com",

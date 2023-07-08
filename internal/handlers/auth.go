@@ -248,8 +248,8 @@ func (a *AuthHandler) Authenticate(c *fiber.Ctx) error {
 	if user.AccountStatus == (constants.Banned) {
 		return helpers.Dispatch400Error(c, "account banned", err)
 	}
-	
-		if user.AccountStatus == (constants.InActive) {
+
+	if user.AccountStatus == (constants.InActive) {
 		return helpers.Dispatch400Error(c, "account not activated", err)
 	}
 
@@ -317,7 +317,7 @@ func (a *AuthHandler) Register(c *fiber.Ctx) error {
 		Password:      hash,
 		UserId:        helpers.GenerateUUID(),
 		AccountStatus: constants.InActive,
-		IP: c.IP(),
+		IP:            c.IP(),
 	}
 
 	otpToken, err := otp.OTPManage.GenerateOTP(input.Email, 5*time.Minute)

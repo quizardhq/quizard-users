@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 )
+
 func TestOTPManager_GenerateOTP(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -43,14 +44,14 @@ func TestOTPManager_GenerateOTP(t *testing.T) {
 		})
 	}
 }
-func TestGenerateOTP(t *testing.T){
+func TestGenerateOTP(t *testing.T) {
 	t.Log("Generating random OTP")
 
 	otp := NewOTPManager()
-	
-	code,_ := otp.GenerateOTP("john@gmail.com", time.Millisecond * 1000)
 
-	good := otp.VerifyOTP("john@gmail.com",code)
+	code, _ := otp.GenerateOTP("john@gmail.com", time.Millisecond*1000)
+
+	good := otp.VerifyOTP("john@gmail.com", code)
 
 	if !good {
 		t.Errorf("Invalid OTP %s", code)

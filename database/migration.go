@@ -132,7 +132,6 @@ func checkTableExist(ctx context.Context, db *gorm.DB, tableName string) (bool, 
 	return response, nil
 }
 
-
 // this should handle gorm auto migration
 func RunAutoMigrations() {
 	if err := DB.AutoMigrate(&models.User{}); err != nil {
